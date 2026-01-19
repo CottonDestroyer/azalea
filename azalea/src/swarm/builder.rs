@@ -329,6 +329,31 @@ where
         self
     }
 
+    /// Set the bot state and update the Builder type.
+    ///
+    /// WARNING: This will reset any previously set `handler` because the
+    /// handler's function signature depends on the old state type.
+    /// You should call `set_state` BEFORE `set_handler`.
+    #[must_use]
+    pub fn set_state<NS>(self, state: NS) -> SwarmBuilder<NS, SS, R, SR>
+    where
+        NS: Send + Sync + Clone + Component + 'static,
+    {
+        SwarmBuilder {
+            app: self.app,
+            accounts: self.accounts,
+            swarm_state: self.swarm_state,
+            swarm_handler: self.swarm_handler,
+            join_delay: self.join_delay,
+            reconnect_after: self.reconnect_after,
+
+            states: vec![state],
+
+            // Old handler expects S
+            handler: None,
+        }
+    }
+
     /// Set the swarm state instead of initializing defaults.
     #[must_use]
     pub fn set_swarm_state(mut self, swarm_state: SS) -> Self {
