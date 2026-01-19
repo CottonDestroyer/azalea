@@ -31,7 +31,7 @@ use crate::{
 /// ```
 pub struct ClientBuilder<S, R>
 where
-    S: Default + Send + Sync + Clone + Component + 'static,
+    S: Send + Sync + Clone + Component + 'static,
     R: Send + 'static,
     Self: Send,
 {
@@ -114,10 +114,9 @@ where
     ///
     /// [`StartJoinServerEvent`]: azalea_client::join::StartJoinServerEvent
     #[must_use]
-    pub fn set_handler<NS, Fut, NR>(self, handler: HandleFn<NS, Fut>) -> ClientBuilder<NS, NR>
+    pub fn set_handler<Fut, NR>(self, handler: HandleFn<S, Fut>) -> ClientBuilder<S, NR>
     where
-        NS: Default + Send + Sync + Clone + Component + 'static,
-        Fut: Future<Output =NR> + Send + 'static,
+        Fut: Future<Output = NR> + Send + 'static,
         NR: Send + 'static,
     {
         ClientBuilder {
@@ -129,12 +128,13 @@ where
     #[must_use]
     pub fn set_state<NS>(self, state: NS) -> ClientBuilder<NS, R>
     where
-        NS: Default + Send + Sync + Clone + Component + 'static
+        NS: Send + Sync + Clone + Component + 'static
     {
         ClientBuilder {
             swarm: self.swarm.set_state(state),
         }
     }
+
     /// Add a group of plugins to the client.
     ///
     /// See [`Self::new_without_plugins`] to learn how to disable default

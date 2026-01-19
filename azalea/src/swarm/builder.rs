@@ -238,21 +238,21 @@ where
     /// ```
     ///
     /// [`StartJoinServerEvent`]: azalea_client::join::StartJoinServerEvent
-    #[must_use]
-    pub fn set_handler<NS, Fut, NR>(self, handler: HandleFn<NS, Fut>) -> SwarmBuilder<NS, SS, NR, SR>
+    // In SwarmBuilder impl
+    pub fn set_handler<Fut, NR>(self, handler: HandleFn<S, Fut>) -> SwarmBuilder<S, SS, NR, SR>
     where
-        NS: Default + Send + Sync + Clone + Component + 'static,
         Fut: Future<Output =NR> + Send + 'static,
         NR: Send + 'static,
     {
+
         SwarmBuilder {
-            handler: Some(Box::new(move |bot, event, state: NS| {
+            handler: Some(Box::new(move |bot, event, state: S| {
                 Box::pin(handler(bot, event, state))
             })),
-            states: vec![NS::default(); self.accounts.len()],
 
             app: self.app,
             accounts: self.accounts,
+            states: self.states, // Pass existing states!
             swarm_state: self.swarm_state,
             swarm_handler: self.swarm_handler,
             join_delay: self.join_delay,
