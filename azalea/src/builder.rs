@@ -127,9 +127,13 @@ where
 {
     /// Set the client state instead of initializing defaults.
     #[must_use]
-    pub fn set_state(mut self, state: S) -> Self {
-        self.swarm.states = vec![state];
-        self
+    pub fn set_state<NS>(self, state: NS) -> ClientBuilder<NS, R>
+    where
+        NS: Default + Send + Sync + Clone + Component + 'static
+    {
+        ClientBuilder {
+            swarm: self.swarm.set_state(state),
+        }
     }
     /// Add a group of plugins to the client.
     ///
