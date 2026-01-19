@@ -83,7 +83,12 @@ impl ClientBuilder<NoState, ()> {
             swarm: SwarmBuilder::new_without_plugins(),
         }
     }
-
+}
+impl<S, R> ClientBuilder<S, R>
+where
+    S: Default + Send + Sync + Clone + Component + 'static,
+    R: Send + 'static,
+{
     /// Set the function that's called every time a bot receives an
     /// [`Event`](crate::Client). This is the way to handle normal per-bot
     /// events.
@@ -109,22 +114,17 @@ impl ClientBuilder<NoState, ()> {
     ///
     /// [`StartJoinServerEvent`]: azalea_client::join::StartJoinServerEvent
     #[must_use]
-    pub fn set_handler<S, Fut, R>(self, handler: HandleFn<S, Fut>) -> ClientBuilder<S, R>
+    pub fn set_handler<NS, Fut, NewR>(self, handler: HandleFn<NS, Fut>) -> ClientBuilder<NS, NewR>
     where
-        S: Default + Send + Sync + Clone + Component + 'static,
-        Fut: Future<Output = R> + Send + 'static,
-        R: Send + 'static,
+        NS: Default + Send + Sync + Clone + Component + 'static,
+        Fut: Future<Output = NewR> + Send + 'static,
+        NewR: Send + 'static,
     {
         ClientBuilder {
             swarm: self.swarm.set_handler(handler),
         }
     }
-}
-impl<S, R> ClientBuilder<S, R>
-where
-    S: Default + Send + Sync + Clone + Component + 'static,
-    R: Send + 'static,
-{
+
     /// Set the client state instead of initializing defaults.
     #[must_use]
     pub fn set_state<NS>(self, state: NS) -> ClientBuilder<NS, R>

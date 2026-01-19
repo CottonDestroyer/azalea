@@ -133,63 +133,6 @@ impl SwarmBuilder<NoState, NoSwarmState, (), ()> {
     }
 }
 
-impl<SS, SR> SwarmBuilder<NoState, SS, (), SR>
-where
-    SS: Default + Send + Sync + Clone + Resource + 'static,
-{
-    /// Set the function that's called every time a bot receives an
-    /// [`Event`](crate::Event). This is the intended way to handle
-    /// normal per-bot events.
-    ///
-    /// Currently you can have up to one handler.
-    ///
-    /// Note that if you're creating clients directly from the ECS using
-    /// [`StartJoinServerEvent`] and the client wasn't already in the ECS, then
-    /// the handler function won't be called for that client. This also applies
-    /// to [`SwarmBuilder::set_swarm_handler`]. This shouldn't be a concern for
-    /// most bots, though.
-    ///
-    /// ```
-    /// # use azalea::{prelude::*, swarm::prelude::*};
-    /// # let swarm_builder = SwarmBuilder::new().set_swarm_handler(swarm_handle);
-    /// swarm_builder.set_handler(handle);
-    ///
-    /// #[derive(Clone, Component, Default)]
-    /// struct State {}
-    /// async fn handle(mut bot: Client, event: Event, state: State) -> anyhow::Result<()> {
-    ///     Ok(())
-    /// }
-    ///
-    /// # #[derive(Clone, Default, Resource)]
-    /// # struct SwarmState {}
-    /// # async fn swarm_handle(
-    /// #     mut swarm: Swarm,
-    /// #     event: SwarmEvent,
-    /// #     state: SwarmState,
-    /// # ) -> anyhow::Result<()> {
-    /// #     Ok(())
-    /// # }
-    /// ```
-    ///
-    /// [`StartJoinServerEvent`]: azalea_client::join::StartJoinServerEvent
-    #[must_use]
-    pub fn set_handler<S, Fut, R>(self, handler: HandleFn<S, Fut>) -> SwarmBuilder<S, SS, R, SR>
-    where
-        Fut: Future<Output = R> + Send + 'static,
-        S: Send + Sync + Clone + Component + Default + 'static,
-    {
-        SwarmBuilder {
-            handler: Some(Box::new(move |bot, event, state: S| {
-                Box::pin(handler(bot, event, state))
-            })),
-            // if we added accounts before the State was set, we've gotta set it to the default now
-            states: vec![S::default(); self.accounts.len()],
-            app: self.app,
-            ..self
-        }
-    }
-}
-
 impl<S, R> SwarmBuilder<S, NoSwarmState, R, ()>
 where
     S: Send + Sync + Clone + Component + 'static,
@@ -260,6 +203,63 @@ where
     R: Send + 'static,
     SR: Send + 'static,
 {
+    /// Set the function that's called every time a bot receives an
+    /// [`Event`](crate::Event). This is the intended way to handle
+    /// normal per-bot events.
+    ///
+    /// Currently you can have up to one handler.
+    ///
+    /// Note that if you're creating clients directly from the ECS using
+    /// [`StartJoinServerEvent`] and the client wasn't already in the ECS, then
+    /// the handler function won't be called for that client. This also applies
+    /// to [`SwarmBuilder::set_swarm_handler`]. This shouldn't be a concern for
+    /// most bots, though.
+    ///
+    /// ```
+    /// # use azalea::{prelude::*, swarm::prelude::*};
+    /// # let swarm_builder = SwarmBuilder::new().set_swarm_handler(swarm_handle);
+    /// swarm_builder.set_handler(handle);
+    ///
+    /// #[derive(Clone, Component, Default)]
+    /// struct State {}
+    /// async fn handle(mut bot: Client, event: Event, state: State) -> anyhow::Result<()> {
+    ///     Ok(())
+    /// }
+    ///
+    /// # #[derive(Clone, Default, Resource)]
+    /// # struct SwarmState {}
+    /// # async fn swarm_handle(
+    /// #     mut swarm: Swarm,
+    /// #     event: SwarmEvent,
+    /// #     state: SwarmState,
+    /// # ) -> anyhow::Result<()> {
+    /// #     Ok(())
+    /// # }
+    /// ```
+    ///
+    /// [`StartJoinServerEvent`]: azalea_client::join::StartJoinServerEvent
+    #[must_use]
+    pub fn set_handler<NS, Fut, NewR>(self, handler: HandleFn<NS, Fut>) -> SwarmBuilder<NS, SS, NewR, SR>
+    where
+        NS: Default + Send + Sync + Clone + Component + 'static,
+        Fut: Future<Output = NewR> + Send + 'static,
+        NewR: Send + 'static,
+    {
+        SwarmBuilder {
+            handler: Some(Box::new(move |bot, event, state: NS| {
+                Box::pin(handler(bot, event, state))
+            })),
+            states: vec![NS::default(); self.accounts.len()],
+
+            app: self.app,
+            accounts: self.accounts,
+            swarm_state: self.swarm_state,
+            swarm_handler: self.swarm_handler,
+            join_delay: self.join_delay,
+            reconnect_after: self.reconnect_after,
+        }
+    }
+
     /// Add a vec of [`Account`]s to the swarm.
     ///
     /// Use [`Self::add_account`] to only add one account. If you want the
